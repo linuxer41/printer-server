@@ -1,0 +1,99 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          target: x86_64-pc-windows-msvc
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target x86_64-pc-windows-msvc
+
+      - name: Create artifacts directory
+        run: mkdir artifacts
+
+      - name: Copy artifacts
+        run: |
+          copy target\x86_64-pc-windows-msvc\release\printer.exe artifacts\printer-windows-x86_64.exe
+          copy README.md artifacts\
+          copy WINDOWS_SERVICE.md artifacts\
+
+      - name: Create Windows ZIP
+        run: Compress-Archive -Path artifacts\* -DestinationPath printer-windows-x86_64.zip
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-build
+          path: printer-windows-x86_64.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          target: x86_64-unknown-linux-gnu
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target x86_64-unknown-linux-gnu
+
+      - name: Create artifacts directory
+        run: mkdir -p artifacts
+
+      - name: Copy artifacts
+        run: |
+          cp target/x86_64-unknown-linux-gnu/release/printer artifacts/printer-linux-x86_64
+          cp README.md artifacts/
+          chmod +x artifacts/printer-linux-x86_64
+
+      - name: Create Linux tarball
+        run: tar -czvf printer-linux-x86_64.tar.gz -C artifacts .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-build
+          path: printer-linux-x86_64.tar.gz
+
+  release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            windows-build/printer-windows-x86_64.zip
+            linux-build/printer-linux-x86_64.tar.gz
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
