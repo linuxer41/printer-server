@@ -1,133 +1,112 @@
-# Guía detallada para configurar como servicio en Windows
+# Configuración como servicio de Windows
 
-## Introducción
+Esta guía te ayudará a configurar el servidor de impresión como un servicio de Windows para que se inicie automáticamente con tu sistema.
 
-Este documento explica cómo configurar la aplicación para que se ejecute como un servicio de Windows, lo que permite que se inicie automáticamente con el sistema y se ejecute en segundo plano.
+## Lo que necesitas
 
-## Requisitos previos
+- Windows 7 o más reciente
+- Permisos de administrador
+- El ejecutable compilado
 
-- Windows 7 o superior
-- Derechos de administrador para instalar servicios
-- La aplicación compilada en modo release
+## Pasos para la instalación
 
-## Paso 1: Compilar la aplicación
+### 1. Compila el programa
 
-Primero, compile la aplicación en modo release:
+Si aún no lo has hecho, compila el programa:
 
 ```powershell
 cargo build --release
 ```
 
-Esto generará el ejecutable en `target/release/printer.exe`.
+Encontrarás el ejecutable en `target/release/printer.exe`.
 
-## Paso 2: Instalar el servicio
+### 2. Instala el servicio
 
-Para instalar el servicio, necesitamos usar el comando `sc.exe` que viene con Windows. Abra una terminal de PowerShell con derechos de administrador y ejecute:
-
-```powershell
-sc.exe create "RustPrintService" binPath= "\"C:\ruta\completa\a\printer.exe\" --run-as-service" start= auto DisplayName= "Rust Print Service"
-```
-
-Asegúrese de reemplazar `C:\ruta\completa\a\printer.exe` con la ruta real a su ejecutable.
-
-> **Nota importante:** El espacio después de `=` en los parámetros de `sc.exe` es necesario.
-
-Puede añadir una descripción al servicio:
+Abre PowerShell como administrador y ejecuta:
 
 ```powershell
-sc.exe description "RustPrintService" "Servicio para imprimir documentos PDF a través de una API REST"
+sc.exe create "RustPrintService" binPath= "\"C:\ruta\a\printer.exe\" --run-as-service" start= auto DisplayName= "Servidor de Impresión"
 ```
 
-## Paso 3: Configurar permisos
+> **Importante:** No olvides el espacio después de cada `=` en los comandos sc.exe. Es raro, pero así funciona.
 
-Es importante asegurarse de que el servicio tenga permisos para acceder a las impresoras:
+Puedes añadir una descripción:
+
+```powershell
+sc.exe description "RustPrintService" "Servidor para imprimir PDFs desde URLs"
+```
+
+### 3. Dale permisos al servicio
+
+Para que pueda acceder a tus impresoras:
 
 ```powershell
 sc.exe privs "RustPrintService" SeLoadDriverPrivilege/SePrintPrivilege
 ```
 
-## Paso 4: Iniciar el servicio
-
-Ahora puede iniciar el servicio:
+### 4. Inicia el servicio
 
 ```powershell
 sc.exe start "RustPrintService"
 ```
 
-## Paso 5: Verificar que el servicio esté funcionando
+### 5. Comprueba que funciona
 
-Puede verificar que el servicio esté funcionando correctamente:
+Verifica el estado del servicio:
 
 ```powershell
 sc.exe query "RustPrintService"
 ```
 
-También puede comprobar que el servidor web está funcionando intentando acceder a:
-
-```
+También puedes probar si responde visitando:
 http://localhost:8081/printers
-```
 
-## Gestión del servicio
+## Gestión básica
 
-### Detener el servicio
-
+Para detenerlo:
 ```powershell
 sc.exe stop "RustPrintService"
 ```
 
-### Reiniciar el servicio
-
+Para reiniciarlo:
 ```powershell
 sc.exe stop "RustPrintService"
 sc.exe start "RustPrintService"
 ```
 
-### Eliminar el servicio
-
-Si necesita desinstalar el servicio:
-
+Para desinstalarlo:
 ```powershell
 sc.exe stop "RustPrintService"
 sc.exe delete "RustPrintService"
 ```
 
-### Cambiar el modo de inicio
+## Modos de inicio
 
-Para cambiar el modo de inicio (automático, manual, deshabilitado):
+Puedes cambiar cuándo se inicia:
 
 ```powershell
-# Automático
+# Inicio automático con Windows
 sc.exe config "RustPrintService" start= auto
 
-# Manual
+# Inicio manual
 sc.exe config "RustPrintService" start= demand
 
-# Deshabilitado
+# Desactivado
 sc.exe config "RustPrintService" start= disabled
 ```
 
 ## Solución de problemas
 
-Si tiene problemas con el servicio, puede consultar los registros de eventos de Windows:
+Si algo no funciona:
 
-1. Abra el "Visor de eventos" (`eventvwr.msc`)
-2. Navegue a "Registros de Windows" > "Aplicación"
-3. Busque eventos relacionados con "RustPrintService"
+1. Revisa el Visor de eventos de Windows (ejecuta `eventvwr.msc`)
+2. Busca en "Registros de Windows" > "Aplicación" eventos de "RustPrintService"
 
-### Problemas comunes
+### Problemas típicos
 
-1. **El servicio no se inicia**
-   - Verifique que la ruta al ejecutable sea correcta
-   - Asegúrese de que el usuario del servicio tenga permisos suficientes
-   - Compruebe los registros de eventos para ver mensajes de error específicos
-
-2. **No se puede acceder al servidor web**
-   - Verifique que el puerto 8081 no esté bloqueado por el firewall
-   - Asegúrese de que otro servicio no esté usando el mismo puerto
-
-3. **Problemas de permisos de impresora**
-   - Asegúrese de que el servicio se ejecute con una cuenta que tenga permisos para acceder a las impresoras
+* **El servicio no arranca**: Comprueba la ruta del ejecutable y los permisos
+* **No puedes conectar al servidor**: Revisa si el puerto 8081 está bloqueado por el firewall
+* **No detecta impresoras**: Asegúrate que el servicio corre con una cuenta con permisos de impresión
 
 ## Recursos adicionales
 

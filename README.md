@@ -1,52 +1,59 @@
 # Servidor de Impresión
 
-Este proyecto es un servidor HTTP que permite listar impresoras y enviar archivos PDF para impresión.
+Un servidor HTTP simple que te permite imprimir PDFs directamente desde URLs y gestionar tus impresoras. Compatible con Windows y Linux.
 
-## Características
+## ¿Qué hace?
 
-- Lista todas las impresoras disponibles en el sistema
-- Imprime archivos PDF desde una URL
-- Funciona en Windows y Linux
-- Puede ejecutarse como un servicio de Windows
+- Muestra todas tus impresoras conectadas
+- Imprime PDFs desde cualquier URL
+- Funciona tanto en Windows como en Linux
+- Se puede configurar como servicio en Windows
 
-## Instalación
+## Instalación rápida
 
-### Requisitos previos
+Necesitas tener Rust instalado. Si no lo tienes, descárgalo desde [rust-lang.org](https://www.rust-lang.org/).
 
-- Rust (última versión estable)
-- Cargo (viene con Rust)
-
-### Compilación
+Para compilar:
 
 ```bash
 cargo build --release
 ```
 
-El ejecutable se creará en `target/release/printer`.
+El ejecutable estará en `target/release/printer`.
 
-## Uso
+## Dependencias
 
-### Iniciar el servidor en modo consola
+Para Windows, recomendamos instalar [SumatraPDF](https://www.sumatrapdfreader.org/download-free-pdf-viewer) para la impresión de PDFs. Puedes colocar SumatraPDF.exe en:
+- El mismo directorio que tu aplicación
+- En cualquiera de estos subdirectorios: bin, tools, apps, utils
+- En su ubicación de instalación predeterminada
 
-```bash
-cargo run
-```
+## Tecnología
 
-o usando el ejecutable:
+Este servidor utiliza:
+- La biblioteca [printers](https://crates.io/crates/printers) para detectar impresoras
+- SumatraPDF para imprimir PDFs en Windows
+- CUPS para imprimir en Linux
+
+## Cómo usarlo
+
+Para iniciar el servidor:
 
 ```bash
 ./target/release/printer
 ```
 
-### Endpoints del API
+Por defecto, el servidor se inicia en el puerto 8081.
 
-#### Listar impresoras
+## API sencilla
+
+### Ver tus impresoras
 
 ```
-GET /printers
+GET http://localhost:8081/printers
 ```
 
-Ejemplo de respuesta:
+Te mostrará algo como:
 
 ```json
 [
@@ -63,67 +70,27 @@ Ejemplo de respuesta:
 ]
 ```
 
-#### Imprimir un PDF
+### Imprimir un PDF
+
+Para imprimir un PDF desde una URL:
 
 ```
-GET /print?url=URL_DEL_PDF&printer=NOMBRE_DE_IMPRESORA
+GET http://localhost:8081/print?url=https://ejemplo.com/documento.pdf
 ```
 
-Parámetros:
-- `url`: URL del archivo PDF a imprimir (requerido)
-- `printer`: Nombre de la impresora (opcional). Si no se proporciona, se usará la impresora predeterminada del sistema. Si no hay impresora predeterminada, se devolverá un error.
+Esto usará tu impresora predeterminada. Si quieres usar una específica:
 
-Ejemplos:
-
-Con impresora específica:
 ```
-GET /print?url=https://example.com/documento.pdf&printer=HP%20LaserJet
+GET http://localhost:8081/print?url=https://ejemplo.com/documento.pdf&printer=HP LaserJet
 ```
 
-Usando la impresora predeterminada:
-```
-GET /print?url=https://example.com/documento.pdf
-```
+## Configurarlo como servicio en Windows
 
-Respuesta exitosa:
-
-```json
-{
-  "status": "success",
-  "printer": "HP LaserJet"
-}
-```
-
-Respuesta de error:
-
-```json
-{
-  "error": "Error downloading PDF: connection refused"
-}
-```
-
-o
-
-```json
-{
-  "error": "No se encontró ninguna impresora predeterminada"
-}
-```
-
-## Configuración como servicio de Windows
-
-### Instalación del servicio
-
-1. Compila el proyecto en modo release:
-
-```bash
-cargo build --release
-```
-
-2. Instala el servicio usando el comando sc:
+1. Compila el proyecto
+2. Instala el servicio:
 
 ```powershell
-sc.exe create "RustPrintService" binPath= "\"C:\ruta\completa\a\printer.exe\" --run-as-service" start= auto
+sc.exe create "RustPrintService" binPath= "\"C:\ruta\a\printer.exe\" --run-as-service" start= auto
 ```
 
 3. Inicia el servicio:
@@ -132,69 +99,49 @@ sc.exe create "RustPrintService" binPath= "\"C:\ruta\completa\a\printer.exe\" --
 sc.exe start "RustPrintService"
 ```
 
-### Gestión del servicio
+Para más detalles, consulta `WINDOWS_SERVICE.md`.
 
-- Para detener el servicio:
+## Configuración en Linux
 
-```powershell
-sc.exe stop "RustPrintService"
-```
-
-- Para eliminar el servicio:
-
-```powershell
-sc.exe delete "RustPrintService"
-```
-
-## Configuración como servicio en Linux (systemd)
-
-1. Crea un archivo de servicio:
+Para configurarlo como servicio en Linux usando systemd:
 
 ```bash
 sudo nano /etc/systemd/system/printer-service.service
 ```
 
-2. Añade el siguiente contenido:
+Con este contenido:
 
 ```ini
 [Unit]
-Description=Rust Print Server
+Description=Servidor de impresión
 After=network.target
 
 [Service]
-ExecStart=/ruta/completa/a/printer
-WorkingDirectory=/ruta/a/directorio
+ExecStart=/ruta/a/printer
 Restart=always
-User=usuario
-Group=grupo
+User=tuusuario
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-3. Recarga los servicios de systemd:
+Luego:
 
 ```bash
 sudo systemctl daemon-reload
-```
-
-4. Habilita e inicia el servicio:
-
-```bash
 sudo systemctl enable printer-service
 sudo systemctl start printer-service
 ```
 
-## Desarrollo
+## Tecnologías
 
-Este proyecto utiliza las siguientes dependencias:
-- axum: Framework web
-- tokio: Runtime asíncrono
-- reqwest: Cliente HTTP
-- serde: Serialización/deserialización JSON
-- tempfile: Manejo de archivos temporales
-- windows-service: Soporte para servicios de Windows
+Este proyecto utiliza:
+- axum para el servidor web
+- tokio para el manejo asíncrono
+- reqwest para descargar PDFs
+- printers para detección de impresoras
+- SumatraPDF para impresión de PDFs en Windows
 
 ## Licencia
 
-Este proyecto está licenciado bajo la licencia MIT. 
+MIT - Úsalo como quieras. 

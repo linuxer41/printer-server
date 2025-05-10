@@ -7,7 +7,7 @@ pub struct PrinterInfo {
     pub is_default: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct PrintParams {
     pub url: String,
     pub printer: Option<String>,
