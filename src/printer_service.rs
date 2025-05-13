@@ -10,6 +10,7 @@ use std::process::Command;
 use tokio::net::TcpListener;
 use log::{info, error};
 use printers::{get_printer_by_name, get_default_printer, get_printers};
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::models::{PrinterInfo, PrintParams};
 
@@ -27,9 +28,16 @@ impl IntoResponse for AppError {
 }
 
 pub async fn run_server() {
+    // Configurar CORS para permitir peticiones de cualquier origen
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+    
     let app = Router::new()
         .route("/printers", get(list_printers))
-        .route("/print", get(print_pdf));
+        .route("/print", get(print_pdf))
+        .layer(cors);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8081));
     info!("Servidor iniciado en http://{}", addr);
